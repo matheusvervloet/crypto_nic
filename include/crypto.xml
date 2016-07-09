@@ -11,6 +11,11 @@
 			<nf:description>The Key value used by the Crypto Module</nf:description>
 			<nf:type>generic_software32</nf:type>
 		</nf:register>
+		<nf:register>
+		  <nf:name>ip_addr</nf:name>
+			<nf:description>The IP address that will be checked to perform the encryption</nf:description>
+			<nf:type>generic_software32</nf:type>
+		</nf:register>
 	</nf:registers>
 	<nf:constants>
 	</nf:constants>
