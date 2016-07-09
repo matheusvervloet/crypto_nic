@@ -11,7 +11,7 @@ nftest_start()
 MAC = ['00:ca:fe:00:00:01', '00:ca:fe:00:00:02',
        '00:ca:fe:00:00:03', '00:ca:fe:00:00:04']
 
-IP = ['192.168.1.1', '192.168.2.1', '192.168.3.1', '192.168.4.1']
+IP = ['192.168.1.1', '192.168.66.6', '192.168.3.1', '192.168.4.1']
 
 TTL = 30
 
@@ -21,9 +21,10 @@ TTL = 30
 
 # Enable encryption
 key = 0x55aaff33
+ip_addr = 0xC0A84206
 
 nftest_regwrite(reg_defines.CRYPTO_KEY_REG(), key)
-
+nftest_regwrite(reg_defines.CRYPTO_IP_ADDR_REG(), ip_addr)
 #
 ###############################
 #

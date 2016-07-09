@@ -75,13 +75,18 @@ module crypto
    wire                             in_fifo_nearly_full;
    wire                             in_fifo_empty;
 
-   wire [`CPCI_NF2_DATA_WIDTH-1:0]  key;
 
+   wire [`CPCI_NF2_DATA_WIDTH-1:0]  key;
+   wire [`CPCI_NF2_DATA_WIDTH-1:0]  ip_addr;
+   
    reg [NUM_STATES-1:0]             state;
    reg [NUM_STATES-1:0]             state_next;
    reg [2:0]                        count;
    reg [2:0]                        count_next;
-   
+  
+
+   reg [31:0]			    dest_ip;
+ 
    //------------------------- Modules-------------------------------
    fallthrough_small_fifo #(.WIDTH(DATA_WIDTH+CTRL_WIDTH), .MAX_DEPTH_BITS(2))
       input_fifo
@@ -102,7 +107,7 @@ module crypto
       .TAG                 (`CRYPTO_BLOCK_ADDR),
       .REG_ADDR_WIDTH      (`CRYPTO_REG_ADDR_WIDTH),                       // Width of block addresses
       .NUM_COUNTERS        (0),                       // How many counters
-      .NUM_SOFTWARE_REGS   (1),                       // How many sw regs
+      .NUM_SOFTWARE_REGS   (2),                       // How many sw regs
       .NUM_HARDWARE_REGS   (0)                        // How many hw regs
    ) crypto_regs (
       .reg_req_in       (reg_req_in),
@@ -124,7 +129,7 @@ module crypto
       .counter_decrement(),
 
       // --- SW regs interface
-      .software_regs    (key),
+      .software_regs    ({ip_addr, key}),
 
       // --- HW regs interface
       .hardware_regs    (),
@@ -149,7 +154,7 @@ module crypto
       count_next = count;
       out_wr = 0;
       in_fifo_rd_en = 0;
-
+      
       if (reset) begin
          state_next = PROCESS_CTRL_HDR;
          count_next = 'd1;
@@ -178,6 +183,7 @@ module crypto
                   count_next = count + 1;
 
                   if (count == FINAL_IP_HDR_WORD - 1) begin
+		     dest_ip[31:16] = in_fifo_data_dout[15:0];
                      state_next = FINAL_IP_HDR;
                   end
                end
@@ -189,9 +195,12 @@ module crypto
                if (!in_fifo_empty && out_rdy) begin
                   out_wr = 1;
                   in_fifo_rd_en = 1;
+		  dest_ip[15:0] = in_fifo_data_dout[63:48];
                   out_data[63:48] = in_fifo_data_dout[63:48];
-                  out_data[47:0] = in_fifo_data_dout[47:0] ^ {key[15:0], key};
-                  state_next = PAYLOAD;
+		  if (dest_ip == ip_addr) begin
+                  	out_data[47:0] = in_fifo_data_dout[47:0] ^ {key[15:0], key};
+                  end
+		  state_next = PAYLOAD;
                end
             end // case: FINAL_IP_HDR
    
@@ -203,8 +212,9 @@ module crypto
                   in_fifo_rd_en = 1;
 
                   // Encrypt/decrypt the data
-                  out_data = in_fifo_data_dout ^ {key, key};
-
+                  if (dest_ip == ip_addr) begin
+		     out_data = in_fifo_data_dout ^ {key, key};
+		  end
                   // Check for EOP
                   if (in_fifo_ctrl_dout != 'h0) begin
                      state_next = PROCESS_CTRL_HDR;
